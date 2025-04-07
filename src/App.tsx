@@ -94,25 +94,41 @@ function App() {
   // Handle form submission
   const handleCardFormSubmit = async (cardData: Partial<Card>) => {
     try {
+      // Note: The actual creation/update happens inside CardFormDialog now
+      // using dispatch to the BoardContext
+      
       if (cardData.id) {
-        // Update existing card
-        console.log('Updating card:', cardData);
-        
+        // Card was updated
         addClippyMessage({
           content: "Card updated successfully!",
           type: 'info',
           dismissible: true
         });
       } else {
-        // Add new card
-        console.log('Adding new card:', cardData);
-        
+        // New card was created
         addClippyMessage({
           content: "Card created successfully!",
           type: 'info',
           dismissible: true
         });
       }
+      
+      // Check for clustering opportunities
+      setTimeout(() => {
+        const shouldSuggestClusters = Math.random() > 0.7; // 30% chance
+        
+        if (shouldSuggestClusters) {
+          addClippyMessage({
+            content: "I notice some cards might be related. Would you like me to organize them into clusters?",
+            type: 'suggestion',
+            action: {
+              label: 'View Clusters',
+              onClick: () => setIsClusterDialogOpen(true)
+            }
+          });
+        }
+      }, 2000);
+      
     } catch (error) {
       console.error('Error saving card:', error);
       
@@ -141,7 +157,7 @@ function App() {
       <BaseStyles>
         <NetworkProvider>
           <BoardProvider boardId={BOARD_ID}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bg: 'canvas.default' }}>
               {/* Header */}
               <Header 
                 onAddCard={handleOpenCardForm}

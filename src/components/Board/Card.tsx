@@ -59,13 +59,14 @@ const Card: React.FC<CardProps> = ({ card, labels, onEdit }) => {
         border: '1px solid',
         borderColor: 'border.default',
         borderRadius: 2,
-        bg: 'canvas.default',
+        bg: 'canvas.default', // White background for cards
         p: 3,
         mb: 2,
         cursor: isDragging ? 'grabbing' : 'pointer',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+        boxShadow: isDragging ? 'shadow.medium' : 'shadow.small',
         ':hover': {
-          boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+          boxShadow: 'shadow.medium',
+          borderColor: 'border.default',
         },
         position: 'relative',
       }}

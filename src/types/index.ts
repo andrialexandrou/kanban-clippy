@@ -19,7 +19,7 @@ export interface Card {
   columnId: string;
   labels: string[]; // Array of label IDs
   assignees: string[]; // Array of user IDs
-  repository?: string; // e.g., github/memex
+  repository?: string; // e.g., clippy-corp/kanban
   order: number;
   createdAt: number;
   updatedAt: number;

@@ -149,7 +149,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
           columnId: 'col-1',
           labels: ['label-1', 'label-2'],
           assignees: [],
-          repository: 'github/memex',
+          repository: 'clippy-corp/kanban',
           order: 0,
           createdAt: Date.now() - 100000,
           updatedAt: Date.now() - 50000
@@ -162,7 +162,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
           columnId: 'col-3',
           labels: ['label-3'],
           assignees: [],
-          repository: 'github/memex',
+          repository: 'clippy-corp/kanban',
           order: 0,
           createdAt: Date.now() - 90000,
           updatedAt: Date.now() - 40000
@@ -175,7 +175,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
           columnId: 'col-4',
           labels: ['label-2'],
           assignees: ['user-1'],
-          repository: 'github/memex',
+          repository: 'clippy-corp/kanban',
           order: 0,
           createdAt: Date.now() - 80000,
           updatedAt: Date.now() - 30000
@@ -188,7 +188,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
           columnId: 'col-1',
           labels: ['label-1'],
           assignees: ['user-2'],
-          repository: 'github/memex',
+          repository: 'clippy-corp/kanban',
           order: 1,
           createdAt: Date.now() - 70000,
           updatedAt: Date.now() - 20000
@@ -201,7 +201,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
           columnId: 'col-5',
           labels: ['label-3', 'label-4'],
           assignees: [],
-          repository: 'github/memex',
+          repository: 'clippy-corp/kanban',
           order: 0,
           createdAt: Date.now() - 60000,
           updatedAt: Date.now() - 10000

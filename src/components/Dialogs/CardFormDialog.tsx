@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
+import { 
+  // Dialog, 
   Box, 
   TextInput, 
   Textarea, 
   Button, 
   FormControl, 
-  Label, 
-  Select, 
+  Select,
   Text,
   ThemeProvider,
-  Spinner,
-  Flash
+  Spinner
 } from '@primer/react';
+import { Dialog } from '@primer/react/experimental';
 import { Card, Column, Label as CardLabel } from '../../types';
 import { useAI } from '../../hooks/useAI';
 import { useBoard } from '../../context/BoardContext';
 import { XIcon } from '@primer/octicons-react';
+import { v4 as uuidv4 } from 'uuid';
 
 interface CardFormDialogProps {
   isOpen: boolean;
@@ -33,7 +33,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   initialColumnId,
   editCard
 }) => {
-  const { state: boardState } = useBoard();
+  const { state: boardState, dispatch } = useBoard();
   const { checkDuplicates, loading: aiLoading, isLLMConnected } = useAI();
   
   // Form state
@@ -62,7 +62,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     } else {
       setTitle('');
       setDescription('');
-      setColumnId(initialColumnId || (sortedColumns[0]?.id || ''));
+      setColumnId(initialColumnId || (sortedColumns.length > 0 ? sortedColumns[0].id : ''));
       setSelectedLabels([]);
       setRepository('kanban-clippy');
     }
@@ -70,29 +70,31 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     setDuplicateCards([]);
     setShowDuplicates(false);
     setSimilarity(0);
-  }, [editCard, initialColumnId, sortedColumns]);
+  }, [editCard, initialColumnId, isOpen]); 
   
   // Check for duplicates when title or description changes
   useEffect(() => {
+    // Skip this effect if these conditions aren't met
+    if (!isLLMConnected || !title || editCard) return;
+    
     const checkForDuplicates = async () => {
-      if (!isLLMConnected || !title) return;
-      
-      // Don't check if we're editing an existing card
-      if (editCard) return;
-      
-      const result = await checkDuplicates(
-        { title, description }, 
-        boardState.cards
-      );
-      
-      if (result.isDuplicate) {
-        setDuplicateCards(result.duplicateCards);
-        setShowDuplicates(true);
-        setSimilarity(result.similarity);
-      } else {
-        setDuplicateCards([]);
-        setShowDuplicates(false);
-        setSimilarity(0);
+      try {
+        const result = await checkDuplicates(
+          { title, description }, 
+          boardState.cards
+        );
+        
+        if (result.isDuplicate) {
+          setDuplicateCards(result.duplicateCards);
+          setShowDuplicates(true);
+          setSimilarity(result.similarity);
+        } else {
+          setDuplicateCards([]);
+          setShowDuplicates(false);
+          setSimilarity(0);
+        }
+      } catch (error) {
+        console.error("Error checking for duplicates:", error);
       }
     };
     
@@ -102,7 +104,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [title, description, boardState.cards, checkDuplicates, editCard, isLLMConnected]);
+  }, [title, description, editCard, isLLMConnected]);
   
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,6 +122,12 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     if (editCard) {
       cardData.id = editCard.id;
       cardData.reference = editCard.reference;
+      
+      // Update in our context
+      dispatch({
+        type: 'UPDATE_CARD',
+        payload: { ...editCard, ...cardData } as Card
+      });
     } else {
       cardData.createdAt = Date.now();
       // Set the order to be the highest in the column + 1
@@ -130,8 +138,31 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
       
       // Generate a reference number (e.g., #12345)
       cardData.reference = `#${Math.floor(10000 + Math.random() * 90000)}`;
+      
+      // Create a new ID
+      const newId = uuidv4();
+      cardData.id = newId;
+      
+      // Add to our context
+      dispatch({
+        type: 'ADD_CARD',
+        payload: cardData as Card
+      });
+      
+      // Update column item count
+      const updatedColumn = boardState.columns.find(col => col.id === columnId);
+      if (updatedColumn) {
+        dispatch({
+          type: 'UPDATE_COLUMN',
+          payload: {
+            ...updatedColumn,
+            itemCount: updatedColumn.itemCount + 1
+          }
+        });
+      }
     }
     
+    // Pass to parent component for further processing
     onSubmit(cardData);
     onDismiss();
   };
@@ -156,15 +187,22 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
       updatedAt: Date.now()
     };
     
+    // Update in our context
+    dispatch({
+      type: 'UPDATE_CARD',
+      payload: mergedCard as Card
+    });
+    
     onSubmit(mergedCard);
     onDismiss();
   };
 
   return (
     <ThemeProvider>
-      {isOpen ? <Dialog
+      {isOpen ? (
+      <Dialog 
         onClose={onDismiss}
-        aria-labelledby="clusters-dialog-title"
+        aria-labelledby="card-form-title"
       >
         <Dialog.Header id="card-form-title">
           {editCard ? 'Edit Card' : 'Create New Card'}
@@ -173,7 +211,15 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
         <Box p={3}>
           {/* Duplicate warning */}
           {showDuplicates && duplicateCards.length > 0 && (
-            <Flash variant="warning" sx={{ mb: 3 }}>
+            <Box sx={{ 
+              mb: 3, 
+              p: 3, 
+              borderRadius: 2,
+              bg: 'attention.subtle',
+              borderColor: 'attention.muted',
+              borderWidth: 1,
+              borderStyle: 'solid'
+            }}>
               <Text fontWeight="bold">Possible duplicate found ({Math.round(similarity * 100)}% similar)</Text>
               <Box mt={2}>
                 {duplicateCards.map(card => (
@@ -184,7 +230,8 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
                       border: '1px solid',
                       borderColor: 'border.default',
                       borderRadius: 2,
-                      mb: 2
+                      mb: 2,
+                      bg: 'canvas.default'
                     }}
                   >
                     <Text sx={{ fontWeight: 'bold', fontSize: 1 }}>{card.title}</Text>
@@ -213,7 +260,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
                   </Box>
                 ))}
               </Box>
-            </Flash>
+            </Box>
           )}
           
           {/* Card form */}
@@ -254,7 +301,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
                 aria-required="true"
                 sx={{ width: '100%' }}
               >
-                {sortedColumns.map(column => (
+                {sortedColumns.map((column: any) => (
                   <Select.Option key={column.id} value={column.id}>
                     {column.title}
                   </Select.Option>
@@ -329,8 +376,8 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
             </Box>
           </form>
         </Box>
-      </Dialog>
-      : null}
+      </Dialog>)
+      : null }
     </ThemeProvider>
   );
 };

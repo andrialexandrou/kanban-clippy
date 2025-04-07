@@ -25,23 +25,52 @@ const Board: React.FC<BoardProps> = ({ onAddCard, onEditCard, onViewClusters }) 
     destinationColumnId: string, 
     newOrder: number
   ) => {
-    // Update card in state
-    dispatch({
-      type: 'MOVE_CARD',
-      payload: {
-        cardId,
-        sourceColumnId,
-        destinationColumnId,
-        newOrder
+    try {
+      // Update card in state
+      dispatch({
+        type: 'MOVE_CARD',
+        payload: {
+          cardId,
+          sourceColumnId,
+          destinationColumnId,
+          newOrder
+        }
+      });
+      
+      // Find the source and destination columns
+      const sourceColumn = board.columns.find(col => col.id === sourceColumnId);
+      const destColumn = board.columns.find(col => col.id === destinationColumnId);
+      
+      // Update column item counts if moving to a different column
+      if (sourceColumnId !== destinationColumnId && sourceColumn && destColumn) {
+        // Decrement source column count
+        dispatch({
+          type: 'UPDATE_COLUMN',
+          payload: {
+            ...sourceColumn,
+            itemCount: Math.max(0, sourceColumn.itemCount - 1)
+          }
+        });
+        
+        // Increment destination column count
+        dispatch({
+          type: 'UPDATE_COLUMN',
+          payload: {
+            ...destColumn,
+            itemCount: destColumn.itemCount + 1
+          }
+        });
       }
-    });
-    
-    // Update card in Firestore
-    await updateCard(cardId, {
-      columnId: destinationColumnId,
-      order: newOrder,
-      updatedAt: Date.now()
-    });
+      
+      // Update card in "database"
+      await updateCard(cardId, {
+        columnId: destinationColumnId,
+        order: newOrder,
+        updatedAt: Date.now()
+      });
+    } catch (error) {
+      console.error('Error moving card:', error);
+    }
   };
   
   // Set up drag and drop with the useDragAndDrop hook
@@ -77,7 +106,7 @@ const Board: React.FC<BoardProps> = ({ onAddCard, onEditCard, onViewClusters }) 
             height: 'calc(100vh - 120px)', // Adjust based on header height
             gap: 3,
             p: 3,
-            bg: 'canvas.subtle',
+            bg: 'canvas.default', // White background for the board
           }}
         >
           {/* Render columns */}
@@ -103,15 +132,17 @@ const Board: React.FC<BoardProps> = ({ onAddCard, onEditCard, onViewClusters }) 
               alignItems: 'center',
               minWidth: '300px',
               height: '80px',
-              border: '2px dashed',
-              borderColor: 'border.muted',
+              border: '1px dashed',
+              borderColor: 'border.default',
               borderRadius: 2,
               p: 3,
               color: 'fg.muted',
+              bg: 'rgba(246, 248, 250, 0.8)', // Light gray background similar to columns
               cursor: 'pointer',
               ':hover': {
                 borderColor: 'border.default',
                 color: 'fg.default',
+                bg: 'rgba(246, 248, 250, 1)',
               },
             }}
             onClick={() => console.log('Add column')}

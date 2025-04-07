@@ -36,7 +36,7 @@ const Column: React.FC<ColumnProps> = ({
   const cardIds = columnCards.map(card => card.id);
 
   // Determine background color based on drop state
-  const bgColor = isOver ? 'rgba(208, 215, 222, 0.2)' : 'transparent';
+  const bgColor = isOver ? 'rgba(208, 215, 222, 0.3)' : 'rgba(246, 248, 250, 1)'; // GitHub-like gray for columns
 
   // Handle add card
   const handleAddCard = () => {
@@ -62,6 +62,9 @@ const Column: React.FC<ColumnProps> = ({
         bg: bgColor,
         transition: 'background-color 200ms ease',
         p: 2,
+        borderRadius: '6px',
+        border: '1px solid',
+        borderColor: 'border.muted',
       }}
       ref={setNodeRef}
     >
