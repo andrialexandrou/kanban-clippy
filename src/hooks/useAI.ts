@@ -23,14 +23,15 @@ export const useAI = () => {
     setError(null);
 
     try {
-      console.log('==useAI== checkDuplicates request:', { newCard, existingCards }); // Log request
-      const result = await aiService.checkForDuplicates(newCard, existingCards); // Use the AI service
-      console.log('==useAI== checkDuplicates response:', result); // Log response
+      const payload = {
+        newCard,
+        existingCards: existingCards.map(card => ({ ...card }))
+      };
+      const result = await aiService.checkForDuplicates(payload.newCard, payload.existingCards); // Use the AI service
       return result;
     } catch (error) {
       setError(error as Error);
-      console.log('==useAI== checkDuplicates error:', error); // Log error
-      return { isDuplicate: false, duplicateCards: [], similarity: 0 };
+      return { duplicates: [] };
     } finally {
       updateLoading(false); // Ensure loading is stopped
     }
@@ -42,13 +43,10 @@ export const useAI = () => {
     setError(null);
 
     try {
-      console.log('==useAI== analyzeClusters request:', cards); // Log request
       const clusters = await aiService.generateClusters(cards); // Use the AI service
-      console.log('==useAI== analyzeClusters response:', clusters); // Log response
       return clusters;
     } catch (error) {
       setError(error as Error);
-      console.error('==useAI== analyzeClusters error:', error); // Log error
       return [];
     } finally {
       updateLoading(false); // Ensure loading is stopped

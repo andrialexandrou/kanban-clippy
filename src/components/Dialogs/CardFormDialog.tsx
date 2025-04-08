@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  // Dialog, 
   Box, 
   TextInput, 
   Textarea, 
@@ -47,7 +46,6 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   // Duplicate detection state
   const [duplicateCards, setDuplicateCards] = useState<Card[]>([]);
   const [showDuplicates, setShowDuplicates] = useState(false);
-  const [similarity, setSimilarity] = useState(0);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false); // New state for progress indicator
   
   // Sort columns by order
@@ -71,32 +69,29 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     
     setDuplicateCards([]);
     setShowDuplicates(false);
-    setSimilarity(0);
   }, [editCard, initialColumnId, isOpen]); 
   
   // Check for duplicates when title or description changes
   useEffect(() => {
-    // Skip this effect if these conditions aren't met
     if (!title || editCard) return;
-    
+
     const checkForDuplicates = async () => {
       setCheckingDuplicates(true); // Show progress indicator
       try {
-        console.log("Checking for duplicates...", {title, description, cards: boardState.cards}, );
-        const result = await checkDuplicates(
-          { title, description }, 
-          boardState.cards
-        );
+        console.log("Checking for duplicates...", { title, description, cards: boardState.cards });
+        const result = await checkDuplicates({
+          id: uuidv4(),
+          title,
+          description,
+        } as Card, boardState.cards);
         console.log("Result (checkForDuplicates):", result);
-        
-        if (result.isDuplicate) {
-          setDuplicateCards(result.duplicateCards);
+
+        if (result.duplicates.length > 0) {
+          setDuplicateCards(result.duplicates);
           setShowDuplicates(true);
-          setSimilarity(result.similarity);
         } else {
           setDuplicateCards([]);
           setShowDuplicates(false);
-          setSimilarity(0);
         }
       } catch (error) {
         console.log("Error checking for duplicates:", error);
@@ -104,12 +99,12 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
         setCheckingDuplicates(false); // Hide progress indicator
       }
     };
-    
+
     // Debounce the check
     const timer = setTimeout(() => {
       checkForDuplicates();
     }, 500);
-    
+
     return () => clearTimeout(timer);
   }, [title, description, editCard]);
   
@@ -247,7 +242,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
                 borderWidth: 1,
                 borderStyle: 'solid'
               }}>
-                <Text fontWeight="bold">Possible duplicate found ({Math.round(similarity * 100)}% similar)</Text>
+                <Text fontWeight="bold">Possible duplicates found:</Text>
                 <Box mt={2}>
                   {duplicateCards.map(card => (
                     <Box 
@@ -262,19 +257,12 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
                       }}
                     >
                       <Text sx={{ fontWeight: 'bold', fontSize: 1 }}>{card.title}</Text>
-                      {card.description && (
-                        <Text as="p" sx={{ fontSize: 1, color: 'fg.muted', mt: 1 }}>
-                          {card.description.length > 100 
-                            ? `${card.description.substring(0, 100)}...` 
-                            : card.description}
-                        </Text>
-                      )}
                       <Box
                         sx={{
                           mt: 2,
                           display: 'flex',
                           gap: 2,
-                          flexgrow: 1 // Changed from flexGrow to flexgrow
+                          flexgrow: 1
                         }}
                       >
                         <Button 

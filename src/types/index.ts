@@ -59,10 +59,8 @@ export interface NetworkStatus {
 
 // AI Response Types
 export interface DuplicateCheck {
-  isDuplicate: boolean;
-  duplicateCards: Card[];
-  similarity: number;
-  message?: string;
+  duplicates: Card[];
+  reason?: string;
 }
 
 export interface ClusterAnalysis {

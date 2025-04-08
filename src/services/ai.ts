@@ -1,7 +1,5 @@
 import { Card, DuplicateCheck, Cluster } from '../types';
 
-console.log('~~ai.ts~~ ai.ts loaded');
-
 // Define the backend base URL
 const BACKEND_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3100';
 
@@ -10,12 +8,11 @@ export const checkForDuplicates = async (
   newCard: Partial<Card>, 
   existingCards: Card[]
 ): Promise<DuplicateCheck> => {
-  console.log("~~ai.ts~~ Checking for duplicates:", newCard);
   try {
     const response = await fetch(`${BACKEND_BASE_URL}/api/openai/check-duplicates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newCard, existingCards }),
+      body: JSON.stringify({ newCard, existingCards, cardIds: existingCards.map(card => card.id) }),
     });
 
     if (!response.ok) {
@@ -24,14 +21,12 @@ export const checkForDuplicates = async (
 
     return await response.json();
   } catch (error) {
-    console.log("~~ai.ts~~ Error checking for duplicates:", error);
-    return { isDuplicate: false, duplicateCards: [], similarity: 0 };
+    return { duplicates: [] };
   }
 };
 
 // Generate clusters from cards using backend API
 export const generateClusters = async (cards: Card[]): Promise<Cluster[]> => {
-  console.log("~~ai.ts~~ Generating clusters:");
   try {
     const response = await fetch(`${BACKEND_BASE_URL}/api/openai/generate-clusters`, {
       method: 'POST',
@@ -45,7 +40,6 @@ export const generateClusters = async (cards: Card[]): Promise<Cluster[]> => {
 
     return await response.json();
   } catch (error) {
-    console.log("~~ai.ts~~ Error generating clusters:", error);
     return [];
   }
 };
