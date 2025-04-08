@@ -46,8 +46,10 @@ export interface Cluster {
   id: string;
   title: string;
   description: string;
+  cards: Partial<Card>[];
   cardIds: string[];
   createdAt: number;
+  clusterName: string;
 }
 
 // Network Status Types

@@ -3,16 +3,14 @@ import {
   Dialog, 
   Box, 
   Text, 
-  Button, 
-  Heading, 
   ThemeProvider,
   Spinner,
   Flash,
-  UnderlineNav
+  Heading
 } from '@primer/react';
-import { XIcon, InfoIcon, SyncIcon } from '@primer/octicons-react';
+import { InfoIcon } from '@primer/octicons-react';
 import { useBoard } from '../../context/BoardContext';
-import { useFirestore } from '../../hooks/useFirestore';
+import { useAI } from '../../hooks/useAI'; // Import useAI hook
 import { Card, Cluster } from '../../types';
 
 interface ClusterDialogProps {
@@ -27,92 +25,76 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
   onViewCard
 }) => {
   const { state: boardState } = useBoard();
-  const { fetchClusters, createClusters } = useFirestore(boardState.id);
+  const { analyzeClusters, loading, error } = useAI(); // Use AI hook
   
   const [clusters, setClusters] = useState<Cluster[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
   
   // Load clusters when dialog opens
   useEffect(() => {
     if (isOpen) {
-      loadClusters();
+      generateClusters();
     }
-  }, [isOpen]); // Remove any dependencies that change frequently
-  
-  // Load existing clusters
-  const loadClusters = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const loadedClusters = await fetchClusters();
-      setClusters(loadedClusters);
-      
-      if (loadedClusters.length > 0) {
-        setSelectedClusterId(loadedClusters[0].id);
-      } else {
-        setSelectedClusterId(null);
-      }
-    } catch (err) {
-      setError('Failed to load clusters. Please try again later.');
-      console.error('Error loading clusters:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Generate new clusters
+  }, [isOpen]);
+
+  // Generate new clusters using the AI hook
   const generateClusters = async () => {
-    setLoading(true);
-    setError(null);
-    
     try {
-      const newClusters = await createClusters(boardState.cards);
+      const response = await analyzeClusters(boardState.cards);
+
+      // Map the response to include card IDs directly
+      const newClusters: Cluster[] | [] = Array.isArray(response.clusters)
+        ? response.clusters.map(cluster => ({
+            id: cluster.clusterName, // Use clusterName as the ID
+            title: cluster.clusterName,
+            description: `Cluster of cards related to ${cluster.clusterName}`,
+            cardIds: cluster.cards.map(card => card.id).filter((id): id is string => id !== undefined), // Filter out undefined IDs
+            cards: cluster.cards,
+            createdAt: Date.now(),
+            clusterName: cluster.clusterName
+          }))
+        : [];
+
       setClusters(newClusters);
-      
+
       if (newClusters.length > 0) {
         setSelectedClusterId(newClusters[0].id);
+      } else {
+        setSelectedClusterId(null); // Reset selected cluster if no clusters are available
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate clusters.');
-      console.error('Error generating clusters:', err);
-    } finally {
-      setLoading(false);
+      setClusters([]); // Reset clusters on error
+      setSelectedClusterId(null); // Reset selected cluster on error
     }
   };
-  
+
   // Find cards for the selected cluster
   const getCardsForCluster = (clusterId: string): Card[] => {
     const cluster = clusters.find(c => c.id === clusterId);
     if (!cluster) return [];
-    
     return boardState.cards.filter((card: any) => cluster.cardIds.includes(card.id));
   };
-  
+
   // Get the selected cluster
   const selectedCluster = selectedClusterId 
     ? clusters.find(c => c.id === selectedClusterId) 
     : null;
-  
+
   // Get cards for the selected cluster
   const clusterCards = selectedClusterId 
     ? getCardsForCluster(selectedClusterId)
     : [];
-  
+
   return (
     <ThemeProvider>
       {isOpen ? (
         <Dialog 
+          title="Card Clusters"
           onClose={onDismiss}
           aria-labelledby="clusters-dialog-title"
+          className="clusters-dialog"
         >
-          <Dialog.Header id="clusters-dialog-title">
-            Card Clusters
-          </Dialog.Header>
-          
-          <Box sx={{ display: 'flex', height: '500px' }}>
+          <Box id="andri" sx={{ display: 'flex', height: '500px', padding: 0 }}>
             {/* Left sidebar with cluster list */}
             <Box 
               sx={{ 
@@ -123,23 +105,9 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
                 overflow: 'auto'
               }}
             >
-              <Box sx={{ mb: 3 }}>
-                <Button 
-                  onClick={generateClusters}
-                  variant="primary"
-                  disabled={loading}
-                  sx={{ width: '100%' }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SyncIcon size={16} />
-                    {loading ? <Spinner size="small" /> : 'Regenerate Clusters'}
-                  </Box>
-                </Button>
-              </Box>
-              
               {error && (
                 <Flash variant="danger" sx={{ mb: 3 }}>
-                  {error}
+                  {error.message || 'Failed to generate clusters.'}
                 </Flash>
               )}
               
@@ -156,37 +124,32 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
                 </Box>
               ) : (
                 <Box>
-                  {clusters.map(cluster => {
-                    // Extract just the category name (remove "related cards" suffix if present)
-                    const displayTitle = cluster.title.replace(/\s+related cards$/i, '');
-                    
-                    return (
-                      <Box
-                        key={cluster.id}
-                        sx={{
-                          p: 2,
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          mb: 1,
-                          bg: selectedClusterId === cluster.id ? 'canvas.subtle' : 'transparent',
-                          borderWidth: '1px',
-                          borderStyle: 'solid',
-                          borderColor: selectedClusterId === cluster.id ? 'border.default' : 'transparent',
-                          ':hover': {
-                            bg: 'canvas.subtle'
-                          }
-                        }}
-                        onClick={() => setSelectedClusterId(cluster.id)}
-                      >
-                        <Text sx={{ fontWeight: selectedClusterId === cluster.id ? 'bold' : 'normal' }}>
-                          {displayTitle}
-                          <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', ml: 1 }}>
-                            ({cluster.cardIds.length})
-                          </Text>
+                  {clusters.map(cluster => (
+                    <Box
+                      key={cluster.id}
+                      sx={{
+                        p: 2,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        mb: 1,
+                        bg: selectedClusterId === cluster.id ? 'canvas.subtle' : 'transparent',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        borderColor: selectedClusterId === cluster.id ? 'border.default' : 'transparent',
+                        ':hover': {
+                          bg: 'canvas.subtle'
+                        }
+                      }}
+                      onClick={() => setSelectedClusterId(cluster.id)}
+                    >
+                      <Text sx={{ fontWeight: selectedClusterId === cluster.id ? 'bold' : 'normal' }}>
+                        {cluster.title}
+                        <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', ml: 1 }}>
+                          ({cluster.cardIds.length})
                         </Text>
-                      </Box>
-                    );
-                  })}
+                      </Text>
+                    </Box>
+                  ))}
                 </Box>
               )}
             </Box>
@@ -195,18 +158,6 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
             <Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>
               {selectedCluster ? (
                 <>
-                  <Heading as="h2" sx={{ fontSize: 3, mb: 2 }}>
-                    {selectedCluster.title}
-                  </Heading>
-                  
-                  <Text as="p" sx={{ color: 'fg.muted', mb: 3 }}>
-                    {selectedCluster.description}
-                  </Text>
-                  
-                  <Heading as="h3" sx={{ fontSize: 2, mb: 2 }}>
-                    Cards in this Cluster
-                  </Heading>
-                  
                   {clusterCards.length === 0 ? (
                     <Text>No cards found in this cluster.</Text>
                   ) : (
@@ -254,15 +205,8 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
               )}
             </Box>
           </Box>
-          
-          <Dialog.Footer>
-            <Button variant="invisible" onClick={onDismiss}>
-              Close
-            </Button>
-          </Dialog.Footer>
         </Dialog>
       ): null}
-
     </ThemeProvider>
   );
 };

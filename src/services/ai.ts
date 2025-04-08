@@ -1,4 +1,4 @@
-import { Card, DuplicateCheck, Cluster } from '../types';
+import { Card, DuplicateCheck, Cluster, ClusterAnalysis } from '../types';
 
 // Define the backend base URL
 const BACKEND_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3100';
@@ -26,7 +26,7 @@ export const checkForDuplicates = async (
 };
 
 // Generate clusters from cards using backend API
-export const generateClusters = async (cards: Card[]): Promise<Cluster[]> => {
+export const generateClusters = async (cards: Card[]): Promise<ClusterAnalysis> => {
   try {
     const response = await fetch(`${BACKEND_BASE_URL}/api/openai/generate-clusters`, {
       method: 'POST',
@@ -40,7 +40,7 @@ export const generateClusters = async (cards: Card[]): Promise<Cluster[]> => {
 
     return await response.json();
   } catch (error) {
-    return [];
+    return { clusters: [] };
   }
 };
 

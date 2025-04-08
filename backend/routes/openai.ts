@@ -1,8 +1,6 @@
 import express from 'express';
 import OpenAI from 'openai';
 
-console.log('OPENAI_API_KEY', process.env.OPENAI_API_KEY);
-
 const router = express.Router();
 const openAIClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Use server-side environment variable
@@ -15,8 +13,6 @@ async function processOpenAIRequest(input: string, res: express.Response) {
       model: "gpt-4o",
       input,
     });
-
-    console.log('~~openai.ts~~ OpenAI response:', response.output_text); // Log response
 
     // Attempt to parse the response as JSON
     let parsedResponse;
@@ -39,7 +35,6 @@ async function processOpenAIRequest(input: string, res: express.Response) {
 
 // Route to handle duplicate detection
 router.post('/check-duplicates', async (req, res) => {
-  console.log('~~openai.ts~~ /check-duplicates route hit'); // Log route hit
   const { newCard, existingCards } = req.body;
 
   const input = `You are a duplicate detection assistant. Check card "${newCard.title}" (ID: ${newCard.id}) against: ${existingCards.map((card: any) => `"${card.title}" (ID: ${card.id})`).join(', ')} and return the full list in JSON format without wrapping it in code blocks. The JSON should look like this: {"duplicates": [{"id": "Duplicate Card ID", "title": "Duplicate Card Title", "reason": "Reason for duplication"}]}.`;
@@ -49,10 +44,9 @@ router.post('/check-duplicates', async (req, res) => {
 
 // Route to handle clustering
 router.post('/generate-clusters', async (req, res) => {
-  console.log('~~openai.ts~~ /generate-clusters route hit'); // Log route hit
   const { cards } = req.body;
 
-  const input = `You are a clustering assistant. Cluster these cards: ${cards.map((card: any) => card.title).join(', ')} and return the clusters in JSON format without wrapping it in code blocks. The JSON should look like this: {"clusters": [{"clusterName": "Cluster 1", "cards": ["Card Title 1", "Card Title 2"]}]}.`;
+  const input = `You are a clustering assistant. Cluster these cards: ${cards.map((card: any) => `"${card.title}" (ID: ${card.id})`).join(', ')} and return the clusters in JSON format without wrapping it in code blocks. The JSON should look like this: {"clusters": [{"clusterName": "Cluster 1", "cards": [{"id": "Card ID 1", "title": "Card Title 1"}]}]}.`;
 
   await processOpenAIRequest(input, res);
 });

@@ -43,11 +43,18 @@ export const useAI = () => {
     setError(null);
 
     try {
-      const clusters = await aiService.generateClusters(cards); // Use the AI service
-      return clusters;
+      const response = await aiService.generateClusters(cards); // Use the AI service
+      return response && typeof response === 'object' && Array.isArray(response.clusters)
+        ? {
+            clusters: response.clusters.map(cluster => ({
+              ...cluster,
+              cardIds: cluster.cardIds || []
+            }))
+          }
+        : { clusters: [] }; // Ensure response has a valid clusters property
     } catch (error) {
       setError(error as Error);
-      return [];
+      return { clusters: [] }; // Return an object with an empty clusters array on error
     } finally {
       updateLoading(false); // Ensure loading is stopped
     }
