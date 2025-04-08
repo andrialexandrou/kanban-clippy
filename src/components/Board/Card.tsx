@@ -155,7 +155,7 @@ const Card: React.FC<CardProps> = ({ card, labels, onEdit }) => {
             {card.assignees.map((assigneeId, index) => (
               <Avatar 
                 key={assigneeId}
-                src={`https://avatars.githubusercontent.com/u/${index + 1}?v=4`} 
+                src={`https://i.pravatar.cc/16?u=${assigneeId}@clippy-corp.com`}
                 size={20}
                 sx={{ 
                   ml: index === 0 ? 0 : -1,
