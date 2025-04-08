@@ -5,17 +5,15 @@ import {
   Textarea, 
   Button, 
   FormControl, 
-  Select,
   Text,
   ThemeProvider,
   Spinner
 } from '@primer/react';
 import { Dialog } from '@primer/react/experimental';
-import { Card, Column, Label as CardLabel } from '../../types';
-import { useAI } from '../../hooks/useAI';
+import { Card } from '../../types';
 import { useBoard } from '../../context/BoardContext';
-import { XIcon } from '@primer/octicons-react';
 import { v4 as uuidv4 } from 'uuid';
+import aiService from '../../services/ai';
 
 interface CardFormDialogProps {
   isOpen: boolean;
@@ -33,8 +31,6 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   editCard
 }) => {
   const { state: boardState, dispatch } = useBoard();
-  const { checkDuplicates, loading: aiLoading } = useAI();
-  console.log('aiLoading', aiLoading)
   
   // Form state
   const [title, setTitle] = useState('');
@@ -78,13 +74,11 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     const checkForDuplicates = async () => {
       setCheckingDuplicates(true); // Show progress indicator
       try {
-        console.log("Checking for duplicates...", { title, description, cards: boardState.cards });
-        const result = await checkDuplicates({
+        const result = await aiService.checkForDuplicates({
           id: uuidv4(),
           title,
           description,
         } as Card, boardState.cards);
-        console.log("Result (checkForDuplicates):", result);
 
         if (result.duplicates.length > 0) {
           setDuplicateCards(result.duplicates);
@@ -94,7 +88,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
           setShowDuplicates(false);
         }
       } catch (error) {
-        console.log("Error checking for duplicates:", error);
+        console.error("Error checking for duplicates:", error);
       } finally {
         setCheckingDuplicates(false); // Hide progress indicator
       }
@@ -216,7 +210,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
               buttonType: 'primary',
               content: editCard ? 'Update' : 'Create',
               onClick: handleSubmit,
-              disabled: aiLoading,
+              disabled: checkingDuplicates, // Disable button while checking duplicates
             },
           ]}
           sx={{

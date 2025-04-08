@@ -10,8 +10,8 @@ import {
 } from '@primer/react';
 import { InfoIcon } from '@primer/octicons-react';
 import { useBoard } from '../../context/BoardContext';
-import { useAI } from '../../hooks/useAI'; // Import useAI hook
-import { Card, Cluster } from '../../types';
+import aiService from '../../services/ai'; // Use aiService directly
+import { Cluster, Card } from '../../types';
 
 interface ClusterDialogProps {
   isOpen: boolean;
@@ -25,10 +25,11 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
   onViewCard
 }) => {
   const { state: boardState } = useBoard();
-  const { analyzeClusters, loading, error } = useAI(); // Use AI hook
   
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Load clusters when dialog opens
   useEffect(() => {
@@ -37,10 +38,13 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
     }
   }, [isOpen]);
 
-  // Generate new clusters using the AI hook
+  // Generate new clusters using the ai.ts service
   const generateClusters = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      const response = await analyzeClusters(boardState.cards);
+      const response = await aiService.generateClusters(boardState.cards);
 
       // Map the response to include card IDs directly
       const newClusters: Cluster[] | [] = Array.isArray(response.clusters)
@@ -63,8 +67,11 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
         setSelectedClusterId(null); // Reset selected cluster if no clusters are available
       }
     } catch (err) {
+      setError('Failed to generate clusters.');
       setClusters([]); // Reset clusters on error
       setSelectedClusterId(null); // Reset selected cluster on error
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -107,7 +114,7 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
             >
               {error && (
                 <Flash variant="danger" sx={{ mb: 3 }}>
-                  {error.message || 'Failed to generate clusters.'}
+                  {error}
                 </Flash>
               )}
               
