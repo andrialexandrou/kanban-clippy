@@ -202,188 +202,183 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   return (
     <ThemeProvider>
       {isOpen ? (
-      <Dialog 
-        onClose={onDismiss}
-        aria-labelledby="card-form-title"
-      >
-        <Dialog.Header id="card-form-title">
-          {editCard ? 'Edit Card' : 'Create New Card'}
-        </Dialog.Header>
-        
-        <Box p={3}>
-          <form onSubmit={handleSubmit}>
-            <FormControl sx={{ mb: 3 }}>
-              <FormControl.Label htmlFor="card-title">Title</FormControl.Label>
-              <TextInput
-                id="card-title"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Card title"
-                required
-                aria-required="true"
-                block
-                sx={{ width: '100%' }}
-              />
-            </FormControl>
+        <Dialog
+          title={editCard ? 'Edit Card' : 'Create New Card'}
+          onClose={onDismiss}
+          aria-labelledby="card-form-title"
+          footerButtons={[
+            {
+              buttonType: 'default',
+              content: 'Cancel',
+              onClick: onDismiss,
+            },
+            {
+              buttonType: 'primary',
+              content: editCard ? 'Update' : 'Create',
+              onClick: handleSubmit,
+              disabled: aiLoading,
+            },
+          ]}
+          sx={{
+            zIndex: 1050, // Ensure the dialog is above other elements
+            position: 'relative', // Ensure z-index is applied correctly
+          }}
+        >
+          <Box p={3}>
+            <form onSubmit={handleSubmit}>
+              <FormControl sx={{ mb: 3 }}>
+                <FormControl.Label htmlFor="card-title">Title</FormControl.Label>
+                <TextInput
+                  id="card-title"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Card title"
+                  required
+                  aria-required="true"
+                  block
+                  sx={{ width: '100%', p: 2 }}
+                />
+              </FormControl>
 
-            {/* Duplicate warning */}
-            {checkingDuplicates ? (
-              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Spinner size="small" />
-                <Text>Checking for duplicates...</Text>
-              </Box>
-            ) : showDuplicates && duplicateCards.length > 0 && (
-              <Box sx={{ 
-                mb: 3, 
-                p: 3, 
-                borderRadius: 2,
-                bg: 'attention.subtle',
-                borderColor: 'attention.muted',
-                borderWidth: 1,
-                borderStyle: 'solid'
-              }}>
-                <Text fontWeight="bold">Possible duplicates found:</Text>
-                <Box mt={2}>
-                  {duplicateCards.map(card => (
-                    <Box 
-                      key={card.id}
-                      sx={{
-                        p: 2,
-                        border: '1px solid',
-                        borderColor: 'border.default',
-                        borderRadius: 2,
-                        mb: 2,
-                        bg: 'canvas.default'
-                      }}
-                    >
-                      <Text sx={{ fontWeight: 'bold', fontSize: 1 }}>{card.title}</Text>
-                      <Box
+              {/* Duplicate warning */}
+              {checkingDuplicates ? (
+                <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Spinner size="small" />
+                  <Text>Checking for duplicates...</Text>
+                </Box>
+              ) : showDuplicates && duplicateCards.length > 0 && (
+                <Box sx={{ 
+                  mb: 3, 
+                  p: 3, 
+                  borderRadius: 2,
+                  bg: 'attention.subtle',
+                  borderColor: 'attention.muted',
+                  borderWidth: 1,
+                  borderStyle: 'solid'
+                }}>
+                  <Text fontWeight="bold">Possible duplicates found:</Text>
+                  <Box mt={2}>
+                    {duplicateCards.map(card => (
+                      <Box 
+                        key={card.id}
                         sx={{
-                          mt: 2,
-                          display: 'flex',
-                          gap: 2,
-                          flexgrow: 1
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'border.default',
+                          borderRadius: 2,
+                          mb: 2,
+                          bg: 'canvas.default'
                         }}
                       >
-                        <Button 
-                          size="small"
-                          onClick={() => handleMergeWithDuplicate(card)}
+                        <Text sx={{ fontWeight: 'bold', fontSize: 1 }}>{card.title}</Text>
+                        <Box
+                          sx={{
+                            mt: 2,
+                            display: 'flex',
+                            gap: 2,
+                            flexgrow: 1
+                          }}
                         >
-                          Merge with this card
-                        </Button>
-                        <Button 
-                          size="small" 
-                          variant="invisible"
-                          onClick={() => setShowDuplicates(false)}
-                        >
-                          Continue anyway
-                        </Button>
+                          <Button 
+                            size="small"
+                            onClick={() => handleMergeWithDuplicate(card)}
+                            sx={{
+                              ':focus': {
+                                outline: '2px solid',
+                                outlineColor: 'accent.fg',
+                              },
+                            }}
+                          >
+                            Merge with this card
+                          </Button>
+                          <Button 
+                            size="small" 
+                            variant="invisible"
+                            onClick={() => setShowDuplicates(false)}
+                            sx={{
+                              ':focus': {
+                                outline: '2px solid',
+                                outlineColor: 'accent.fg',
+                              },
+                            }}
+                          >
+                            Continue anyway
+                          </Button>
+                        </Box>
                       </Box>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              <FormControl sx={{ mb: 3 }}>
+                <FormControl.Label htmlFor="card-description">Description</FormControl.Label>
+                <Textarea
+                  id="card-description"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Card description (optional)"
+                  rows={5}
+                  sx={{ width: '100%', p: 2 }}
+                />
+              </FormControl>
+              
+              <FormControl sx={{ mb: 3 }}>
+                <FormControl.Label>Labels</FormControl.Label>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  {boardState.labels.map((label: any) => (
+                    <Box 
+                      key={label.id}
+                      as="label"
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        ':hover': {
+                          bg: 'canvas.subtle'
+                        },
+                        ':focus-within': {
+                          outline: '2px solid',
+                          outlineColor: 'accent.fg',
+                          borderRadius: 2,
+                        },
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedLabels.includes(label.id)}
+                        onChange={() => toggleLabel(label.id)}
+                        style={{ marginRight: '8px' }}
+                      />
+                      <Box
+                        sx={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          bg: label.color,
+                          mr: 1
+                        }}
+                      />
+                      <Text>{label.name}</Text>
                     </Box>
                   ))}
                 </Box>
-              </Box>
-            )}
-
-            <FormControl sx={{ mb: 3 }}>
-              <FormControl.Label htmlFor="card-description">Description</FormControl.Label>
-              <Textarea
-                id="card-description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Card description (optional)"
-                rows={5}
-                sx={{ width: '100%' }}
-              />
-            </FormControl>
-            
-            <FormControl sx={{ mb: 3 }}>
-              <FormControl.Label htmlFor="card-column">Status</FormControl.Label>
-              <Select
-                id="card-column"
-                value={columnId}
-                onChange={e => setColumnId(e.target.value)}
-                required
-                aria-required="true"
-                sx={{ width: '100%' }}
-              >
-                {sortedColumns.map((column: any) => (
-                  <Select.Option key={column.id} value={column.id}>
-                    {column.title}
-                  </Select.Option>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl sx={{ mb: 3 }}>
-              <FormControl.Label>Labels</FormControl.Label>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {boardState.labels.map((label: any) => (
-                  <Box 
-                    key={label.id}
-                    as="label"
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'border.default',
-                      borderRadius: 2,
-                      cursor: 'pointer',
-                      bg: selectedLabels.includes(label.id) ? 'canvas.subtle' : 'transparent',
-                      ':hover': {
-                        bg: 'canvas.subtle'
-                      }
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedLabels.includes(label.id)}
-                      onChange={() => toggleLabel(label.id)}
-                      style={{ marginRight: '8px' }}
-                    />
-                    <Box
-                      sx={{
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        bg: label.color,
-                        mr: 1
-                      }}
-                    />
-                    <Text>{label.name}</Text>
-                  </Box>
-                ))}
-              </Box>
-            </FormControl>
-            
-            <FormControl sx={{ mb: 3 }}>
-              <FormControl.Label htmlFor="card-repository">Repository</FormControl.Label>
-              <TextInput
-                id="card-repository"
-                value={repository}
-                onChange={e => setRepository(e.target.value)}
-                placeholder="github/repository"
-                sx={{ width: '100%' }}
-              />
-            </FormControl>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-              <Button variant="invisible" onClick={onDismiss}>
-                Cancel
-              </Button>
-              <Button 
-                variant="primary" 
-                type="submit"
-                disabled={aiLoading}
-              >
-                {aiLoading ? <Spinner size="small" /> : editCard ? 'Update' : 'Create'}
-              </Button>
-            </Box>
-          </form>
-        </Box>
-      </Dialog>)
-      : null }
+              </FormControl>
+              
+              <FormControl sx={{ mb: 3 }}>
+                <FormControl.Label htmlFor="card-repository">Repository</FormControl.Label>
+                <TextInput
+                  id="card-repository"
+                  value={repository}
+                  onChange={e => setRepository(e.target.value)}
+                  placeholder="github/repository"
+                  sx={{ width: '100%', p: 2 }}
+                />
+              </FormControl>
+            </form>
+          </Box>
+        </Dialog>
+      ) : null}
     </ThemeProvider>
   );
 };

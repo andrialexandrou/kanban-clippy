@@ -15,7 +15,12 @@ code {
 
 /* Remove default outline for better aesthetics */
 button:focus, input:focus, textarea:focus, select:focus {
-  outline: none;
+  outline: 2px solid var(--color-accent-fg); /* Use a theme variable or color */
+  outline-offset: 2px;
+}
+button:focus-within, input:focus-within, textarea:focus-within, select:focus-within {
+  outline: 2px solid var(--color-accent-fg); /* Use a theme variable or color */
+  outline-offset: 2px;
 }
 
 /* Custom scrollbars for a better look */
@@ -64,4 +69,10 @@ html, body, #root {
     width: 100%;
     margin-bottom: 1rem;
   }
+}
+
+/* Global Fix for Dialogs */
+.dialog-overlay, .primer-dialog {
+  z-index: 1050 !important; /* Ensure dialogs are above other elements */
+  position: relative; /* Ensure z-index is applied correctly */
 }
