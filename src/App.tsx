@@ -196,6 +196,9 @@ function App() {
                 messages={clippyMessages}
                 onDismissMessage={dismissClippyMessage}
               />
+              <span>
+                Welcome to Kanban Clippy!
+              </span>
             </Box>
           </BoardProvider>
         </NetworkProvider>

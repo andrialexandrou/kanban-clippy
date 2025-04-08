@@ -62,6 +62,7 @@ export interface DuplicateCheck {
   isDuplicate: boolean;
   duplicateCards: Card[];
   similarity: number;
+  message?: string;
 }
 
 export interface ClusterAnalysis {

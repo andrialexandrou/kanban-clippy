@@ -13,7 +13,6 @@ import {
 import { XIcon, InfoIcon, SyncIcon } from '@primer/octicons-react';
 import { useBoard } from '../../context/BoardContext';
 import { useFirestore } from '../../hooks/useFirestore';
-import { useAI } from '../../hooks/useAI';
 import { Card, Cluster } from '../../types';
 
 interface ClusterDialogProps {
@@ -29,7 +28,6 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
 }) => {
   const { state: boardState } = useBoard();
   const { fetchClusters, createClusters } = useFirestore(boardState.id);
-  const { isLLMConnected } = useAI();
   
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,10 +69,6 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
     setError(null);
     
     try {
-      if (!isLLMConnected) {
-        throw new Error('LLM is not connected. Please check your network connection and try again.');
-      }
-      
       const newClusters = await createClusters(boardState.cards);
       setClusters(newClusters);
       
@@ -133,7 +127,7 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
                 <Button 
                   onClick={generateClusters}
                   variant="primary"
-                  disabled={loading || !isLLMConnected}
+                  disabled={loading}
                   sx={{ width: '100%' }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -141,12 +135,6 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
                     {loading ? <Spinner size="small" /> : 'Regenerate Clusters'}
                   </Box>
                 </Button>
-                
-                {!isLLMConnected && (
-                  <Text sx={{ color: 'attention.fg', fontSize: 0, mt: 1 }}>
-                    LLM connection required
-                  </Text>
-                )}
               </Box>
               
               {error && (

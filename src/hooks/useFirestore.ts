@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { Card, Column, Label, Cluster } from '../types';
-import { useAI } from './useAI';
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock storage for our demo since we're not actually connecting to Firebase
@@ -19,8 +18,7 @@ const mockStorage: {
 export const useFirestore = (boardId: string) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const { analyzeClusters } = useAI();
-  
+
   // Card operations
   const addCard = useCallback(async (card: Omit<Card, 'id'>): Promise<string> => {
     setLoading(true);
@@ -199,22 +197,33 @@ export const useFirestore = (boardId: string) => {
     setLoading(true);
     setError(null);
     try {
-      // Use AI to generate clusters
-      const clusters = await analyzeClusters(cards);
-      
+      // Call backend API to generate clusters
+      const response = await fetch('/api/openai/generate-clusters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cards }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate clusters');
+      }
+
+      const clustersToSave: Cluster[] = await response.json();
+
       // Save clusters to our mock storage
-      clusters.forEach(cluster => {
+      clustersToSave.forEach(cluster => {
         mockStorage.clusters[cluster.id] = cluster;
       });
-      
+
       setLoading(false);
-      return clusters;
+      return clustersToSave;
     } catch (error) {
       setError(error as Error);
       setLoading(false);
+      console.error("Error generating clusters:", error);
       return [];
     }
-  }, [analyzeClusters]);
+  }, []);
   
   return {
     loading,

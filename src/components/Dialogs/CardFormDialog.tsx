@@ -34,7 +34,8 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   editCard
 }) => {
   const { state: boardState, dispatch } = useBoard();
-  const { checkDuplicates, loading: aiLoading, isLLMConnected } = useAI();
+  const { checkDuplicates, loading: aiLoading } = useAI();
+  console.log('aiLoading', aiLoading)
   
   // Form state
   const [title, setTitle] = useState('');
@@ -47,6 +48,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   const [duplicateCards, setDuplicateCards] = useState<Card[]>([]);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [similarity, setSimilarity] = useState(0);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false); // New state for progress indicator
   
   // Sort columns by order
   const sortedColumns = [...boardState.columns].sort((a, b) => a.order - b.order);
@@ -75,14 +77,17 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
   // Check for duplicates when title or description changes
   useEffect(() => {
     // Skip this effect if these conditions aren't met
-    if (!isLLMConnected || !title || editCard) return;
+    if (!title || editCard) return;
     
     const checkForDuplicates = async () => {
+      setCheckingDuplicates(true); // Show progress indicator
       try {
+        console.log("Checking for duplicates...", {title, description, cards: boardState.cards}, );
         const result = await checkDuplicates(
           { title, description }, 
           boardState.cards
         );
+        console.log("Result (checkForDuplicates):", result);
         
         if (result.isDuplicate) {
           setDuplicateCards(result.duplicateCards);
@@ -94,7 +99,9 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
           setSimilarity(0);
         }
       } catch (error) {
-        console.error("Error checking for duplicates:", error);
+        console.log("Error checking for duplicates:", error);
+      } finally {
+        setCheckingDuplicates(false); // Hide progress indicator
       }
     };
     
@@ -104,7 +111,7 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [title, description, editCard, isLLMConnected]);
+  }, [title, description, editCard]);
   
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -209,61 +216,6 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
         </Dialog.Header>
         
         <Box p={3}>
-          {/* Duplicate warning */}
-          {showDuplicates && duplicateCards.length > 0 && (
-            <Box sx={{ 
-              mb: 3, 
-              p: 3, 
-              borderRadius: 2,
-              bg: 'attention.subtle',
-              borderColor: 'attention.muted',
-              borderWidth: 1,
-              borderStyle: 'solid'
-            }}>
-              <Text fontWeight="bold">Possible duplicate found ({Math.round(similarity * 100)}% similar)</Text>
-              <Box mt={2}>
-                {duplicateCards.map(card => (
-                  <Box 
-                    key={card.id}
-                    sx={{
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'border.default',
-                      borderRadius: 2,
-                      mb: 2,
-                      bg: 'canvas.default'
-                    }}
-                  >
-                    <Text sx={{ fontWeight: 'bold', fontSize: 1 }}>{card.title}</Text>
-                    {card.description && (
-                      <Text as="p" sx={{ fontSize: 1, color: 'fg.muted', mt: 1 }}>
-                        {card.description.length > 100 
-                          ? `${card.description.substring(0, 100)}...` 
-                          : card.description}
-                      </Text>
-                    )}
-                    <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                      <Button 
-                        size="small"
-                        onClick={() => handleMergeWithDuplicate(card)}
-                      >
-                        Merge with this card
-                      </Button>
-                      <Button 
-                        size="small" 
-                        variant="invisible"
-                        onClick={() => setShowDuplicates(false)}
-                      >
-                        Continue anyway
-                      </Button>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          )}
-          
-          {/* Card form */}
           <form onSubmit={handleSubmit}>
             <FormControl sx={{ mb: 3 }}>
               <FormControl.Label htmlFor="card-title">Title</FormControl.Label>
@@ -278,7 +230,73 @@ const CardFormDialog: React.FC<CardFormDialogProps> = ({
                 sx={{ width: '100%' }}
               />
             </FormControl>
-            
+
+            {/* Duplicate warning */}
+            {checkingDuplicates ? (
+              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Spinner size="small" />
+                <Text>Checking for duplicates...</Text>
+              </Box>
+            ) : showDuplicates && duplicateCards.length > 0 && (
+              <Box sx={{ 
+                mb: 3, 
+                p: 3, 
+                borderRadius: 2,
+                bg: 'attention.subtle',
+                borderColor: 'attention.muted',
+                borderWidth: 1,
+                borderStyle: 'solid'
+              }}>
+                <Text fontWeight="bold">Possible duplicate found ({Math.round(similarity * 100)}% similar)</Text>
+                <Box mt={2}>
+                  {duplicateCards.map(card => (
+                    <Box 
+                      key={card.id}
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: 'border.default',
+                        borderRadius: 2,
+                        mb: 2,
+                        bg: 'canvas.default'
+                      }}
+                    >
+                      <Text sx={{ fontWeight: 'bold', fontSize: 1 }}>{card.title}</Text>
+                      {card.description && (
+                        <Text as="p" sx={{ fontSize: 1, color: 'fg.muted', mt: 1 }}>
+                          {card.description.length > 100 
+                            ? `${card.description.substring(0, 100)}...` 
+                            : card.description}
+                        </Text>
+                      )}
+                      <Box
+                        sx={{
+                          mt: 2,
+                          display: 'flex',
+                          gap: 2,
+                          flexgrow: 1 // Changed from flexGrow to flexgrow
+                        }}
+                      >
+                        <Button 
+                          size="small"
+                          onClick={() => handleMergeWithDuplicate(card)}
+                        >
+                          Merge with this card
+                        </Button>
+                        <Button 
+                          size="small" 
+                          variant="invisible"
+                          onClick={() => setShowDuplicates(false)}
+                        >
+                          Continue anyway
+                        </Button>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
             <FormControl sx={{ mb: 3 }}>
               <FormControl.Label htmlFor="card-description">Description</FormControl.Label>
               <Textarea
