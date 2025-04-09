@@ -6,12 +6,18 @@ import {
   ThemeProvider,
   Spinner,
   Flash,
-  Heading
+  Heading,
+  Button
 } from '@primer/react';
-import { InfoIcon } from '@primer/octicons-react';
+import { InfoIcon, SyncIcon } from '@primer/octicons-react';
 import { useBoard } from '../../context/BoardContext';
 import aiService from '../../services/ai'; // Use aiService directly
 import { Cluster, Card } from '../../types';
+
+// Add cache keys for localStorage
+const CLUSTERS_CACHE_KEY = 'kanban-clippy-clusters';
+const CLUSTERS_TIMESTAMP_KEY = 'kanban-clippy-clusters-timestamp';
+const CACHE_EXPIRY_TIME = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 interface ClusterDialogProps {
   isOpen: boolean;
@@ -30,20 +36,112 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cacheStatus, setCacheStatus] = useState<'fresh' | 'stale' | 'none'>('none');
   
   // Load clusters when dialog opens
   useEffect(() => {
     if (isOpen) {
-      generateClusters();
+      // Try to load from cache first
+      const cachedClusters = loadClustersFromCache();
+      
+      if (cachedClusters) {
+        setClusters(cachedClusters);
+        if (cachedClusters.length > 0) {
+          setSelectedClusterId(cachedClusters[0].id);
+        }
+        setCacheStatus('fresh');
+      } else {
+        // No valid cache, generate new clusters
+        generateClusters();
+      }
     }
   }, [isOpen]);
 
+  // Check if the cached clusters are still relevant to current cards
+  const areClustersCurrent = (clusters: Cluster[]): boolean => {
+    // Get all card IDs from clusters
+    const clusterCardIds = clusters.flatMap(c => c.cardIds);
+    const currentCardIds = boardState.cards.map(c => c.id);
+    
+    // Check if there are significant differences between the sets
+    let cardsAdded = 0;
+    let cardsRemoved = 0;
+    
+    const clusterCardSet = new Set(clusterCardIds);
+    const currentCardSet = new Set(currentCardIds);
+    
+    for (const id of currentCardIds) {
+      if (!clusterCardSet.has(id)) cardsAdded++;
+    }
+    
+    for (const id of clusterCardIds) {
+      if (!currentCardSet.has(id)) cardsRemoved++;
+    }
+    
+    // Consider clusters outdated if more than 20% of cards changed
+    const totalCards = Math.max(clusterCardIds.length, currentCardIds.length);
+    const changePercentage = (cardsAdded + cardsRemoved) / totalCards;
+    
+    return changePercentage < 0.2; // Less than 20% change
+  };
+
+  // Load clusters from localStorage cache
+  const loadClustersFromCache = (): Cluster[] | null => {
+    try {
+      const cachedClustersJson = localStorage.getItem(CLUSTERS_CACHE_KEY);
+      const cachedTimestampStr = localStorage.getItem(CLUSTERS_TIMESTAMP_KEY);
+      
+      if (!cachedClustersJson || !cachedTimestampStr) return null;
+      
+      const cachedClusters: Cluster[] = JSON.parse(cachedClustersJson);
+      const cachedTimestamp = parseInt(cachedTimestampStr, 10);
+      const now = Date.now();
+      
+      // Check if cache is expired or if board has changed significantly
+      if (now - cachedTimestamp > CACHE_EXPIRY_TIME || !areClustersCurrent(cachedClusters)) {
+        setCacheStatus('stale');
+        return cachedClusters; // Return stale data but mark it as stale
+      }
+      
+      return cachedClusters;
+    } catch (err) {
+      console.error('Error loading clusters from cache:', err);
+      return null;
+    }
+  };
+  
+  // Save clusters to localStorage cache
+  const saveClustersToCache = (clusters: Cluster[]) => {
+    try {
+      const timestamp = Date.now().toString();
+      localStorage.setItem(CLUSTERS_CACHE_KEY, JSON.stringify(clusters));
+      localStorage.setItem(CLUSTERS_TIMESTAMP_KEY, timestamp);
+      console.log('Saved clusters to cache with timestamp:', timestamp);
+      setCacheStatus('fresh');
+    } catch (err) {
+      console.error('Error saving clusters to cache:', err);
+    }
+  };
+
   // Generate new clusters using the ai.ts service
-  const generateClusters = async () => {
+  const generateClusters = async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
     try {
+      // If we're not forcing a refresh and we have a fresh cache, use that
+      if (!forceRefresh && cacheStatus === 'fresh') {
+        const cachedClusters = loadClustersFromCache();
+        if (cachedClusters) {
+          setClusters(cachedClusters);
+          if (cachedClusters.length > 0) {
+            setSelectedClusterId(cachedClusters[0].id);
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
       const response = await aiService.generateClusters(boardState.cards);
 
       // Map the response to include card IDs directly
@@ -60,6 +158,12 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
         : [];
 
       setClusters(newClusters);
+      
+      // Ensure clusters are saved to localStorage
+      if (newClusters.length > 0) {
+        saveClustersToCache(newClusters);
+        console.log('Clusters saved to localStorage:', newClusters.length);
+      }
 
       if (newClusters.length > 0) {
         setSelectedClusterId(newClusters[0].id);
@@ -67,6 +171,7 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
         setSelectedClusterId(null); // Reset selected cluster if no clusters are available
       }
     } catch (err) {
+      console.error('Error generating clusters:', err);
       setError('Failed to generate clusters.');
       setClusters([]); // Reset clusters on error
       setSelectedClusterId(null); // Reset selected cluster on error
@@ -112,6 +217,22 @@ const ClusterDialog: React.FC<ClusterDialogProps> = ({
                 overflow: 'auto'
               }}
             >
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Button 
+                  variant="primary" 
+                  size="small"
+                  leadingVisual={SyncIcon}
+                  onClick={() => generateClusters(true)}
+                  disabled={loading}
+                >
+                  {loading ? 'Loading...' : 'Re-cluster'}
+                </Button>
+                
+                {cacheStatus === 'stale' && !loading && (
+                  <Text sx={{ fontSize: 0, color: 'attention.fg', ml: 1 }}>Outdated</Text>
+                )}
+              </Box>
+              
               {error && (
                 <Flash variant="danger" sx={{ mb: 3 }}>
                   {error}

@@ -8,6 +8,7 @@ import Board from './components/Board/Board';
 import CardFormDialog from './components/Dialogs/CardFormDialog';
 import ClusterDialog from './components/Dialogs/ClusterDialog';
 import ClippyAssistant from './components/Clippy/ClippyAssistant';
+import ClusterView from './components/Views/ClusterView';
 import { Card } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,6 +16,9 @@ import { v4 as uuidv4 } from 'uuid';
 const BOARD_ID = 'demo-board-123';
 
 function App() {
+  // State for current view
+  const [currentView, setCurrentView] = useState<'board' | 'clusters'>('board');
+  
   // State for dialogs
   const [isCardFormOpen, setIsCardFormOpen] = useState(false);
   const [isClusterDialogOpen, setIsClusterDialogOpen] = useState(false);
@@ -150,6 +154,15 @@ function App() {
     // Find the card and open edit dialog
     console.log('View card:', cardId);
     setIsClusterDialogOpen(false);
+    // When a card is viewed from clusters, switch back to board view
+    setCurrentView('board');
+  };
+
+  // Handle view clusters
+  const handleViewClusters = () => {
+    setCurrentView('clusters');
+    // When switching to cluster view, close any open dialogs
+    setIsClusterDialogOpen(false);
   };
 
   return (
@@ -161,20 +174,24 @@ function App() {
               {/* Header */}
               <Header 
                 onAddCard={handleOpenCardForm}
-                onViewClusters={() => setIsClusterDialogOpen(true)}
+                onViewClusters={handleViewClusters}
               />
               
-              {/* Filter bar */}
-              <FilterBar onFilter={handleFilter} />
+              {/* Filter bar - only show on board view */}
+              {currentView === 'board' && <FilterBar onFilter={handleFilter} />}
               
-              {/* Main board */}
-              <Box sx={{ flex: 1, overflow: 'hidden' }}>
-                <Board 
-                  onAddCard={handleOpenCardForm}
-                  onEditCard={handleEditCard}
-                  onViewClusters={() => setIsClusterDialogOpen(true)}
-                />
-              </Box>
+              {/* Main content area */}
+              {currentView === 'board' ? (
+                <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                  <Board 
+                    onAddCard={handleOpenCardForm}
+                    onEditCard={handleEditCard}
+                    onViewClusters={handleViewClusters}
+                  />
+                </Box>
+              ) : (
+                <ClusterView onViewCard={handleViewCardFromCluster} />
+              )}
               
               {/* Dialogs */}
               <CardFormDialog 
@@ -185,17 +202,12 @@ function App() {
                 editCard={editCard}
               />
               
-              <ClusterDialog 
-                isOpen={isClusterDialogOpen}
-                onDismiss={() => setIsClusterDialogOpen(false)}
-                onViewCard={handleViewCardFromCluster}
-              />
-              
               {/* Clippy Assistant */}
               <ClippyAssistant 
                 messages={clippyMessages}
                 onDismissMessage={dismissClippyMessage}
               />
+
             </Box>
           </BoardProvider>
         </NetworkProvider>
