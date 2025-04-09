@@ -1,7 +1,7 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
 import { Board, Card, Column, Label, BoardAction } from '../types';
-// Since firebase.ts might have similar issues, let's mock this import for now
-// import { getBoard, subscribeToBoardChanges } from '../services/firebase';
+// Import the mock data
+import issuesData from '../mock-data.json';
 
 // Initial state
 const initialState: Board = {
@@ -129,60 +129,61 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
   
   // Load initial board data and subscribe to changes - mocked for now
   useEffect(() => {
-    // Mock data loading
+    // Create mock cards from the imported issues data
+    const mockCards = issuesData.map((issue, index) => {
+      // Determine which column to place the card in based on a simple distribution
+      let columnId;
+      if (index % 5 === 0) columnId = 'col-1';      // Backlog
+      else if (index % 5 === 1) columnId = 'col-2'; // In Progress
+      else if (index % 5 === 2) columnId = 'col-3'; // Review
+      else if (index % 5 === 3) columnId = 'col-4'; // Blocked
+      else columnId = 'col-5';                     // Done
+      
+      // Determine label based on issue title prefix
+      let labelId = 'label-1'; // Default to bug
+      if (issue.title.includes('[Screen Reader')) labelId = 'label-2';
+      else if (issue.title.includes('[Visual Requirement')) labelId = 'label-3';
+      else if (issue.title.includes('[Supporting Platform')) labelId = 'label-4';
+      
+      // Random assignee (or none)
+      const assigneeRandom = Math.floor(Math.random() * 3);
+      const assignees = assigneeRandom === 0 ? [] : [`user-${Math.floor(Math.random() * 15) + 1}`];
+
+      // Generate card order within column based on issue number
+      const order = Math.floor(index / 5);
+      
+      return {
+        id: `card-${index + 1}`,
+        reference: `#${issue.number}`,
+        title: issue.title,
+        description: `Fix accessibility issue reported in ${issue.url}`,
+        columnId,
+        labels: [labelId],
+        assignees,
+        repository: 'clippy-corp/kanban',
+        order,
+        createdAt: Date.now() - (index * 10000),
+        updatedAt: Date.now() - (index * 5000)
+      };
+    });
+    
+    // Mock data
     const mockBoard: Board = {
       id: boardId,
-      title: 'Clippy Corp Experience',
+      title: 'Accessibility Improvements',
       columns: [
-        { id: 'col-1', title: 'Backlog', itemCount: 10, order: 0, color: '#6f42c1' },
-        { id: 'col-2', title: 'In Progress', itemCount: 15, order: 1, color: '#007bff' },
-        { id: 'col-3', title: 'Review', itemCount: 10, order: 2, color: '#28a745' },
-        { id: 'col-4', title: 'Blocked', itemCount: 5, order: 3, color: '#dc3545' },
-        { id: 'col-5', title: 'Done', itemCount: 10, order: 4, color: '#fd7e14' }
+        { id: 'col-1', title: 'Backlog', itemCount: 0, order: 0, color: '#6f42c1' },
+        { id: 'col-2', title: 'In Progress', itemCount: 0, order: 1, color: '#007bff' },
+        { id: 'col-3', title: 'Review', itemCount: 0, order: 2, color: '#28a745' },
+        { id: 'col-4', title: 'Blocked', itemCount: 0, order: 3, color: '#dc3545' },
+        { id: 'col-5', title: 'Done', itemCount: 0, order: 4, color: '#fd7e14' }
       ],
-      cards: [
-        // Components-related cards
-        { id: 'card-1', reference: '#10001', title: 'Refactor Header Component', description: 'Simplify header logic and improve accessibility', columnId: 'col-1', labels: ['label-2'], assignees: ['user-1'], repository: 'clippy-corp/kanban', order: 0, createdAt: Date.now() - 100000, updatedAt: Date.now() - 50000 },
-        { id: 'card-2', reference: '#10002', title: 'Fix Sidebar Overflow Issue', description: 'Resolve overflow issue in sidebar on small screens', columnId: 'col-1', labels: ['label-1'], assignees: ['user-2'], repository: 'clippy-corp/kanban', order: 1, createdAt: Date.now() - 90000, updatedAt: Date.now() - 40000 },
-        { id: 'card-3', reference: '#10003', title: 'Add Tooltip to Buttons', description: 'Provide tooltips for all action buttons', columnId: 'col-2', labels: ['label-3'], assignees: [], repository: 'clippy-corp/kanban', order: 0, createdAt: Date.now() - 80000, updatedAt: Date.now() - 30000 },
-        { id: 'card-4', reference: '#10004', title: 'Implement Dark Mode', description: 'Add dark mode toggle and theme support', columnId: 'col-2', labels: ['label-4'], assignees: ['user-3'], repository: 'clippy-corp/kanban', order: 1, createdAt: Date.now() - 70000, updatedAt: Date.now() - 20000 },
-        { id: 'card-5', reference: '#10005', title: 'Fix Modal Close Button', description: 'Ensure modal close button works on all browsers', columnId: 'col-3', labels: ['label-1'], assignees: [], repository: 'clippy-corp/kanban', order: 0, createdAt: Date.now() - 60000, updatedAt: Date.now() - 10000 },
-    
-        // Infrastructure boundaries
-        { id: 'card-6', reference: '#10006', title: 'Optimize API Calls', description: 'Reduce redundant API calls in the dashboard', columnId: 'col-1', labels: ['label-2'], assignees: ['user-4'], repository: 'clippy-corp/kanban', order: 2, createdAt: Date.now() - 50000, updatedAt: Date.now() - 20000 },
-        { id: 'card-7', reference: '#10007', title: 'Migrate to GraphQL', description: 'Replace REST API with GraphQL for better flexibility', columnId: 'col-2', labels: ['label-3'], assignees: ['user-5'], repository: 'clippy-corp/kanban', order: 2, createdAt: Date.now() - 40000, updatedAt: Date.now() - 10000 },
-        { id: 'card-8', reference: '#10008', title: 'Set Up CI/CD Pipeline', description: 'Automate build and deployment process', columnId: 'col-3', labels: ['label-4'], assignees: ['user-6'], repository: 'clippy-corp/kanban', order: 1, createdAt: Date.now() - 30000, updatedAt: Date.now() - 5000 },
-        { id: 'card-9', reference: '#10009', title: 'Fix CORS Issues', description: 'Resolve cross-origin resource sharing errors', columnId: 'col-4', labels: ['label-1'], assignees: [], repository: 'clippy-corp/kanban', order: 0, createdAt: Date.now() - 20000, updatedAt: Date.now() - 1000 },
-        { id: 'card-10', reference: '#10010', title: 'Upgrade Node.js Version', description: 'Upgrade to Node.js 18 for better performance', columnId: 'col-5', labels: ['label-2'], assignees: ['user-7'], repository: 'clippy-corp/kanban', order: 0, createdAt: Date.now() - 10000, updatedAt: Date.now() - 500 },
-    
-        // Visual proximity
-        { id: 'card-11', reference: '#10011', title: 'Fix Alignment in Footer', description: 'Ensure footer elements are properly aligned', columnId: 'col-1', labels: ['label-3'], assignees: [], repository: 'clippy-corp/kanban', order: 3, createdAt: Date.now() - 90000, updatedAt: Date.now() - 40000 },
-        { id: 'card-12', reference: '#10012', title: 'Improve Card Spacing', description: 'Add consistent spacing between cards', columnId: 'col-2', labels: ['label-4'], assignees: ['user-8'], repository: 'clippy-corp/kanban', order: 3, createdAt: Date.now() - 80000, updatedAt: Date.now() - 30000 },
-        { id: 'card-13', reference: '#10013', title: 'Fix Button Hover States', description: 'Ensure hover states are consistent across buttons', columnId: 'col-3', labels: ['label-1'], assignees: [], repository: 'clippy-corp/kanban', order: 2, createdAt: Date.now() - 70000, updatedAt: Date.now() - 20000 },
-        { id: 'card-14', reference: '#10014', title: 'Add Animations to Dropdowns', description: 'Smooth animations for dropdown menus', columnId: 'col-4', labels: ['label-2'], assignees: ['user-9'], repository: 'clippy-corp/kanban', order: 1, createdAt: Date.now() - 60000, updatedAt: Date.now() - 10000 },
-        { id: 'card-15', reference: '#10015', title: 'Fix Card Shadow', description: 'Ensure card shadows are consistent across themes', columnId: 'col-5', labels: ['label-3'], assignees: [], repository: 'clippy-corp/kanban', order: 1, createdAt: Date.now() - 50000, updatedAt: Date.now() - 20000 },
-    
-        // DOM proximity
-        { id: 'card-16', reference: '#10016', title: 'Fix Context Menu Positioning', description: 'Ensure context menu appears near the clicked item', columnId: 'col-1', labels: ['label-4'], assignees: ['user-10'], repository: 'clippy-corp/kanban', order: 4, createdAt: Date.now() - 40000, updatedAt: Date.now() - 10000 },
-        { id: 'card-17', reference: '#10017', title: 'Fix Dropdown Overlap', description: 'Resolve overlap issues with dropdown menus', columnId: 'col-2', labels: ['label-1'], assignees: [], repository: 'clippy-corp/kanban', order: 4, createdAt: Date.now() - 30000, updatedAt: Date.now() - 5000 },
-        { id: 'card-18', reference: '#10018', title: 'Fix Tooltip Z-Index', description: 'Ensure tooltips appear above other elements', columnId: 'col-3', labels: ['label-2'], assignees: ['user-11'], repository: 'clippy-corp/kanban', order: 3, createdAt: Date.now() - 20000, updatedAt: Date.now() - 1000 },
-        { id: 'card-19', reference: '#10019', title: 'Fix Modal Scroll Issue', description: 'Prevent background scrolling when modal is open', columnId: 'col-4', labels: ['label-3'], assignees: [], repository: 'clippy-corp/kanban', order: 2, createdAt: Date.now() - 10000, updatedAt: Date.now() - 500 },
-        { id: 'card-20', reference: '#10020', title: 'Fix Dropdown Keyboard Navigation', description: 'Ensure dropdowns are accessible via keyboard', columnId: 'col-5', labels: ['label-4'], assignees: ['user-12'], repository: 'clippy-corp/kanban', order: 2, createdAt: Date.now() - 5000, updatedAt: Date.now() - 100 },
-    
-        // Permissions/data model similarity
-        { id: 'card-21', reference: '#10021', title: 'Fix Read-Only Role Permissions', description: 'Ensure read-only users cannot edit cards', columnId: 'col-1', labels: ['label-1'], assignees: ['user-13'], repository: 'clippy-corp/kanban', order: 5, createdAt: Date.now() - 40000, updatedAt: Date.now() - 10000 },
-        { id: 'card-22', reference: '#10022', title: 'Add Admin Role', description: 'Create a new admin role with elevated permissions', columnId: 'col-2', labels: ['label-2'], assignees: ['user-14'], repository: 'clippy-corp/kanban', order: 5, createdAt: Date.now() - 30000, updatedAt: Date.now() - 5000 },
-        { id: 'card-23', reference: '#10023', title: 'Fix Bug Role Assignment', description: 'Resolve issues with assigning roles to users', columnId: 'col-3', labels: ['label-3'], assignees: [], repository: 'clippy-corp/kanban', order: 4, createdAt: Date.now() - 20000, updatedAt: Date.now() - 1000 },
-        { id: 'card-24', reference: '#10024', title: 'Add Role-Based Access Control', description: 'Implement RBAC for better security', columnId: 'col-4', labels: ['label-4'], assignees: ['user-15'], repository: 'clippy-corp/kanban', order: 3, createdAt: Date.now() - 10000, updatedAt: Date.now() - 500 },
-        { id: 'card-25', reference: '#10025', title: 'Fix Bug in Role Deletion', description: 'Ensure roles can be deleted without errors', columnId: 'col-5', labels: ['label-1'], assignees: [], repository: 'clippy-corp/kanban', order: 3, createdAt: Date.now() - 5000, updatedAt: Date.now() - 100 },
-    
-        // Add more cards as needed to reach 50...
-      ],
+      cards: mockCards,
       labels: [
         { id: 'label-1', name: 'bug', color: '#dc3545' },
-        { id: 'label-2', name: 'feature', color: '#28a745' },
-        { id: 'label-3', name: 'enhancement', color: '#007bff' },
-        { id: 'label-4', name: 'documentation', color: '#6f42c1' }
+        { id: 'label-2', name: 'screen reader', color: '#28a745' },
+        { id: 'label-3', name: 'visual', color: '#007bff' },
+        { id: 'label-4', name: 'platform', color: '#6f42c1' }
       ],
       users: [
         { id: 'user-1', name: 'John Doe', avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4' },
@@ -202,6 +203,12 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
         { id: 'user-15', name: 'Mia Nelson', avatarUrl: 'https://avatars.githubusercontent.com/u/15?v=4' }
       ]
     };
+    
+    // Update the item counts for each column
+    mockBoard.columns = mockBoard.columns.map(column => {
+      const itemCount = mockBoard.cards.filter(card => card.columnId === column.id).length;
+      return { ...column, itemCount };
+    });
     
     // Set mock data
     dispatch({ type: 'SET_BOARD', payload: mockBoard });
