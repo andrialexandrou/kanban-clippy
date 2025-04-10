@@ -36,21 +36,23 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilter }) => {
       <Box 
         sx={{ 
           p: 3, 
-          borderBottom: '1px solid', 
+          paddingBottom: 0,
+          borderTop: '1px solid', 
           borderColor: 'border.default',
           bg: 'canvas.default'
         }}
       >
         <form onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ position: 'relative', width: '100%', maxWidth: '600px' }}>
+            <Box sx={{ position: 'relative', width: '100%', zmaxWidth: '600px' }}>
               <TextInput
                   aria-label="Filter cards"
                   placeholder="Filter by keyword or by field"
                   value={filterValue}
+                  // block={true}
                   onChange={handleInputChange}
                   leadingVisual={SearchIcon}
-                  sx={{ width: '100%' }}
+                  sx={{ width: '100%', padding: 2 }}
                 />
                 {filterValue && (
                   <Box sx={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)' }}>

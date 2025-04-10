@@ -27,6 +27,7 @@ import { useBoard } from '../../context/BoardContext';
 interface HeaderProps {
   onAddCard: () => void;
   onViewClusters: () => void;
+  onViewBoard: () => void;
 }
 
 // Styled components
@@ -36,7 +37,7 @@ const HeaderContainer = styled(PrimerHeader)`
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--color-border-default);
-  background-color: var(--color-header-bg);
+  background-color: rgba(246, 248, 250, 1);
   color: var(--color-header-text);
 `;
 
@@ -69,7 +70,7 @@ const TabNavContainer = styled(Box)`
 `;
 
 // Define the Header component
-const Header: React.FC<HeaderProps> = ({ onAddCard, onViewClusters }) => {
+const Header: React.FC<HeaderProps> = ({ onAddCard, onViewClusters, onViewBoard }) => {
   const { state: networkState } = useNetwork();
   const { state: boardState } = useBoard();
 
@@ -79,6 +80,7 @@ const Header: React.FC<HeaderProps> = ({ onAddCard, onViewClusters }) => {
       <Box display="flex" alignItems="center">
         <Heading sx={{ fontSize: 3, display: 'flex', alignItems: 'center' }}>
           {boardState.title || "Kanban Clippy"}
+          &nbsp;
           <LockIcon className="ml-2" />
         </Heading>
       </Box>
@@ -89,40 +91,17 @@ const Header: React.FC<HeaderProps> = ({ onAddCard, onViewClusters }) => {
           <Box 
             as="a" 
             href="#" 
+            onClick={onViewBoard}
             sx={{ 
               px: 3, 
               py: 2, 
               fontWeight: 'semibold', 
-              borderBottom: '2px solid', 
+              textDecoration: 'none',
               borderColor: 'accent.fg',
               color: 'fg.default'
             }}
           >
-            Current Iteration
-          </Box>
-          <Box 
-            as="a" 
-            href="#" 
-            sx={{ 
-              px: 3, 
-              py: 2, 
-              color: 'fg.muted',
-              ':hover': { color: 'fg.default' }
-            }}
-          >
-            Iteration 4
-          </Box>
-          <Box 
-            as="a" 
-            href="#" 
-            sx={{ 
-              px: 3, 
-              py: 2, 
-              color: 'fg.muted',
-              ':hover': { color: 'fg.default' }
-            }}
-          >
-            Iteration 3
+            Board
           </Box>
           <Box 
             as="a" 
@@ -131,7 +110,9 @@ const Header: React.FC<HeaderProps> = ({ onAddCard, onViewClusters }) => {
             sx={{ 
               px: 3, 
               py: 2, 
-              color: 'fg.muted',
+              textDecoration: 'none',
+              fontWeight: 'semibold',
+              color: 'fg.default',
               ':hover': { color: 'fg.default' },
               cursor: 'pointer'
             }}

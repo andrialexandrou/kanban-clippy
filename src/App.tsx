@@ -174,6 +174,7 @@ function App() {
               {/* Header */}
               <Header 
                 onAddCard={handleOpenCardForm}
+                onViewBoard={() => setCurrentView('board')}
                 onViewClusters={handleViewClusters}
               />
               

@@ -82,7 +82,6 @@ async function processOpenAIRequest(input: string, res: express.Response) {
 
     // Store raw response for debugging
     const rawResponse = response.output_text;
-    console.log('Raw OpenAI response:', rawResponse);
 
     // Attempt to parse the response as JSON
     let parsedResponse;
@@ -94,16 +93,13 @@ async function processOpenAIRequest(input: string, res: express.Response) {
       // Try to sanitize and parse again
       try {
         const sanitizedJson = sanitizeJsonString(rawResponse);
-        console.log('Sanitized JSON:', sanitizedJson);
         parsedResponse = JSON.parse(sanitizedJson);
-        console.log('Successfully parsed sanitized JSON');
       } catch (sanitizeError) {
         console.error('First sanitization failed:', sanitizeError);
         
         // Try deep sanitization as a last resort
         try {
           const deepSanitizedJson = deepSanitizeJson(rawResponse);
-          console.log('Deep sanitized JSON:', deepSanitizedJson);
           parsedResponse = JSON.parse(deepSanitizedJson);
           console.log('Successfully parsed deeply sanitized JSON');
         } catch (deepSanitizeError) {
@@ -144,12 +140,40 @@ If there are no duplicates, return: {"duplicates": []}`;
 
 // Route to handle clustering
 router.post('/generate-clusters', async (req, res) => {
-  const { cards } = req.body;
+  const { cards, existingClusters = [], batchInfo = {} } = req.body;
 
-  const input = `You are a clustering assistant. Your task is to organize cards into logical groups.
+  // Construct a more sophisticated prompt that includes existing clusters
+  let existingClustersText = '';
+  if (existingClusters && existingClusters.length > 0) {
+    existingClustersText = `
+Existing clusters from previous batches:
+${existingClusters.map((name: string) => `- "${name}"`).join('\n')}
+
+IMPORTANT: When appropriate, use these existing cluster names to categorize new cards. This ensures consistency across batches. Only create a new cluster when a card doesn't fit well into any existing cluster.`;
+  }
+  
+  // Include batch information in the prompt if available
+  let batchInfoText = '';
+  if (batchInfo && batchInfo.current && batchInfo.total) {
+    batchInfoText = `\nThis is batch ${batchInfo.current} of ${batchInfo.total} total batches.`;
+  }
+
+  const input = `You are a clustering assistant. Your task is to organize cards into logical groups.${batchInfoText}
+
+You will be given a list of software issues. Each issue includes a title and description.
+
+Your task is to group these issues into clusters based on how they could most efficiently be solved or addressed.
+	•	Use your judgment to identify which issues likely require similar types of engineering work, design changes, or process adjustments.
+	•	Base clusters on factors like the type of fix, responsible team, layer of the stack, or shared root cause.
+	•	Do not group by issue category or tag (e.g., “UI”, “Performance”, “Keyboard”) unless it directly maps to a shared resolution approach.
+	•	The goal is to organize the issues in a way that would let a team solve the most problems with the least number of unique interventions.
+
+Each name should be short but descriptive, reflecting the kind of work involved (e.g., “Update design tokens”, “Refactor dropdown component”, “Improve focus handling”, “Add missing metadata”).
 
 Cards to cluster:
 ${cards.map((card: any) => `- "${card.title}" (ID: ${card.id})`).join('\n')}
+
+${existingClustersText}
 
 Respond ONLY with a valid JSON object without any explanatory text. The JSON should have this exact structure:
 {"clusters": [{"clusterName": "descriptive_name", "cards": [{"id": "card_id", "title": "card_title"}]}]}

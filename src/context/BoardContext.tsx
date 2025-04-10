@@ -170,7 +170,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ children, boardId 
     // Mock data
     const mockBoard: Board = {
       id: boardId,
-      title: 'Accessibility Improvements',
+      title: 'Clippy Corp Experience',
       columns: [
         { id: 'col-1', title: 'Backlog', itemCount: 0, order: 0, color: '#6f42c1' },
         { id: 'col-2', title: 'In Progress', itemCount: 0, order: 1, color: '#007bff' },

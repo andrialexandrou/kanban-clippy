@@ -6,8 +6,9 @@ import {
   Spinner,
   Flash,
   Heading,
+  Button,
 } from '@primer/react';
-import { InfoIcon, CheckCircleIcon } from '@primer/octicons-react';
+import { InfoIcon, CheckCircleIcon, SyncIcon } from '@primer/octicons-react';
 import { useBoard } from '../../context/BoardContext';
 import aiService from '../../services/ai';
 import { Cluster, Card } from '../../types';
@@ -28,16 +29,39 @@ const ClusterView: React.FC<ClusterViewProps> = ({
   
   // Load clusters when component mounts
   useEffect(() => {
-    generateClusters();
-  }, []);
+    // Check if there are cached clusters in localStorage first
+    const cardsSignature = boardState.cards.map(c => c.id).sort().join(',');
+    const cachedClusters = aiService.getCachedClusters(cardsSignature);
+    
+    if (cachedClusters && cachedClusters.clusters && cachedClusters.clusters.length > 0) {
+      // Use cached clusters if available
+      const newClusters: Cluster[] = cachedClusters.clusters.map(cluster => ({
+        id: cluster.clusterName,
+        title: cluster.clusterName,
+        description: `Cluster of cards related to ${cluster.clusterName}`,
+        cardIds: cluster.cards.map(card => card.id).filter((id): id is string => id !== undefined),
+        cards: cluster.cards,
+        createdAt: Date.now(),
+        clusterName: cluster.clusterName
+      }));
+      
+      setClusters(newClusters);
+      if (newClusters.length > 0) {
+        setSelectedClusterId(newClusters[0].id);
+      }
+    } else {
+      // Generate new clusters if no cache is available
+      generateClusters();
+    }
+  }, [boardState.cards]);
 
   // Generate new clusters using the ai.ts service
-  const generateClusters = async () => {
+  const generateClusters = async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await aiService.generateClusters(boardState.cards);
+      const response = await aiService.generateClusters(boardState.cards, forceRefresh);
 
       // Map the response to include card IDs directly
       const newClusters: Cluster[] | [] = Array.isArray(response.clusters)
@@ -68,6 +92,13 @@ const ClusterView: React.FC<ClusterViewProps> = ({
     }
   };
 
+  // Handle refresh click - force refresh from API
+  const handleRefreshClick = () => {
+    // Clear the selected cluster immediately to give visual feedback
+    setSelectedClusterId(null);
+    generateClusters(true);
+  };
+
   // Find cards for the selected cluster
   const getCardsForCluster = (clusterId: string): Card[] => {
     const cluster = clusters.find(c => c.id === clusterId);
@@ -95,7 +126,7 @@ const ClusterView: React.FC<ClusterViewProps> = ({
       {/* Left sidebar with cluster list */}
       <Box 
         sx={{ 
-          width: '240px', 
+          width: '380px', 
           borderRight: '1px solid', 
           borderColor: 'border.default',
           p: 3,
@@ -103,7 +134,23 @@ const ClusterView: React.FC<ClusterViewProps> = ({
           bg: 'canvas.subtle'
         }}
       >
-        <Heading as="h3" sx={{ mb: 3, fontSize: 2 }}>Clusters</Heading>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Heading as="h3" sx={{ fontSize: 2 }}>Clusters</Heading>
+          <Button 
+            size="small" 
+            variant="invisible" 
+            onClick={handleRefreshClick}
+            aria-label="Refresh clusters"
+            disabled={loading}
+            sx={{ 
+              p: '4px', 
+              color: 'fg.muted',
+              '&:hover': { color: 'fg.default' } 
+            }}
+          >
+            <SyncIcon size={16} />
+          </Button>
+        </Box>
         
         {error && (
           <Flash variant="danger" sx={{ mb: 3 }}>
@@ -142,9 +189,26 @@ const ClusterView: React.FC<ClusterViewProps> = ({
                 }}
                 onClick={() => setSelectedClusterId(cluster.id)}
               >
-                <Text sx={{ fontWeight: selectedClusterId === cluster.id ? 'bold' : 'normal' }}>
+                <Text 
+                  sx={{ 
+                    // Always use the same font weight to prevent layout shifts
+                    fontWeight: 'semibold',
+                    // Use color to indicate selection instead of font weight
+                    color: selectedClusterId === cluster.id ? 'fg.default' : 'fg.muted',
+                    display: 'block'
+                  }}
+                >
                   {cluster.title}
-                  <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', ml: 1 }}>
+                  <Text 
+                    as="span" 
+                    sx={{ 
+                      fontSize: 0, 
+                      color: 'fg.muted', 
+                      ml: 1,
+                      // Ensure consistent rendering of the count
+                      fontWeight: 'normal'
+                    }}
+                  >
                     ({cluster.cardIds.length})
                   </Text>
                 </Text>
@@ -156,31 +220,6 @@ const ClusterView: React.FC<ClusterViewProps> = ({
       
       {/* Right side with cluster details in table format */}
       <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Table Header */}
-        {selectedCluster && (
-          <Box
-            sx={{
-              display: 'flex',
-              p: 3,
-              bg: 'canvas.default',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              fontSize: 1,
-              fontWeight: 'bold',
-              color: 'fg.muted',
-              position: 'sticky',
-              top: 0,
-              zIndex: 1
-            }}
-          >
-            <Box sx={{ flex: '0 0 32px' }}></Box>
-            <Box sx={{ flex: 1 }}>Title</Box>
-            <Box sx={{ width: '120px' }}>Status</Box>
-            <Box sx={{ width: '150px' }}>Reference</Box>
-          </Box>
-        )}
-
         {/* Table Content */}
         <Box sx={{ flex: 1, overflow: 'auto' }}>
           {selectedCluster ? (
@@ -203,30 +242,15 @@ const ClusterView: React.FC<ClusterViewProps> = ({
                       borderBottom: index < clusterCards.length - 1 ? '1px solid' : 'none',
                       borderColor: 'border.default',
                       cursor: 'pointer',
-                      ':hover': {
-                        bg: 'canvas.subtle'
-                      }
                     }}
                     onClick={() => onViewCard(card.id)}
                   >
-                    <Box sx={{ flex: '0 0 32px', color: 'success.fg' }}>
-                      <CheckCircleIcon size={16} />
-                    </Box>
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Text sx={{ fontWeight: 'bold', mb: 1 }}>{card.title}</Text>
-                      {card.description && (
-                        <Text as="p" sx={{ color: 'fg.muted', fontSize: 0 }}>
-                          {card.description.length > 100 
-                            ? `${card.description.substring(0, 100)}...` 
-                            : card.description}
-                        </Text>
-                      )}
-                    </Box>
-                    {/* <Box sx={{ width: '120px', fontSize: 0, color: 'fg.muted' }}>
-                      {card.status || 'Open'}
-                    </Box> */}
-                    <Box sx={{ width: '150px', fontSize: 0, color: 'fg.muted' }}>
-                      {card.reference || '-'}
+                      <span>
+                        <Text sx={{ fontWeight: 'bold', mb: 1 }}>{card.title}</Text>
+                        &nbsp;
+                        <Text sx={{color: 'fg.muted', fontSize: '14px'}}>{card.reference}</Text>
+                      </span>
                     </Box>
                   </Box>
                 ))
